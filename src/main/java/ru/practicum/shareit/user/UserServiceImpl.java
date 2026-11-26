@@ -1,6 +1,7 @@
 package ru.practicum.shareit.user;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
@@ -25,12 +26,10 @@ public class UserServiceImpl implements UserService {
         if (userDto.getEmail() == null || userDto.getEmail().isBlank()) {
             throw new ValidationException("Email не может быть пустым");
         }
-        userRepository.findByEmail(userDto.getEmail()).ifPresent(u -> {
+        userRepository.findByEmailIgnoreCase(userDto.getEmail()).ifPresent(u -> {
             throw new ConflictException("Пользователь с email " + userDto.getEmail() + " уже существует");
         });
-
-        User user = UserMapper.toUser(userDto);
-        return UserMapper.toUserDto(userRepository.save(user));
+        return UserMapper.toUserDto(userRepository.save(UserMapper.toUser(userDto)));
     }
 
     @Override
@@ -42,21 +41,19 @@ public class UserServiceImpl implements UserService {
             if (userDto.getEmail().isBlank()) {
                 throw new ValidationException("Email не может быть пустым");
             }
-            userRepository.findByEmail(userDto.getEmail())
+            userRepository.findByEmailIgnoreCase(userDto.getEmail())
                     .filter(u -> !u.getId().equals(userId))
                     .ifPresent(u -> {
                         throw new ConflictException("Email " + userDto.getEmail() + " уже занят другим пользователем");
                     });
             user.setEmail(userDto.getEmail());
         }
-
         if (userDto.getName() != null) {
             if (userDto.getName().isBlank()) {
                 throw new ValidationException("Имя пользователя не может быть пустым");
             }
             user.setName(userDto.getName());
         }
-
         return UserMapper.toUserDto(userRepository.save(user));
     }
 
@@ -68,7 +65,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDto> getAll() {
-        return userRepository.findAll().stream()
+        return userRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
                 .map(UserMapper::toUserDto)
                 .collect(Collectors.toList());
     }
