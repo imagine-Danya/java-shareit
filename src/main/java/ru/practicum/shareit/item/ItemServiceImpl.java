@@ -32,16 +32,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto create(Long userId, ItemDto itemDto) {
-        checkUserId(userId);
-        User owner = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
+        User owner = getUser(userId);
         Item item = itemRepository.save(ItemMapper.toItem(itemDto, owner));
         return ItemMapper.toItemDto(item);
     }
 
     @Override
     public ItemDto update(Long userId, Long itemId, ItemDto itemDto) {
-        checkUserId(userId);
+        getUser(userId);
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
         if (!item.getOwner().getId().equals(userId)) {
@@ -67,13 +65,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDetailDto getById(Long userId, Long itemId) {
+        getUser(userId);
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
 
         List<Comment> comments = commentRepository.findAllByItemIdOrderByCreatedDesc(itemId);
         Booking lastBooking = null;
         Booking nextBooking = null;
-        if (userId != null && userId.equals(item.getOwner().getId())) {
+        if (userId.equals(item.getOwner().getId())) {
             LocalDateTime now = LocalDateTime.now();
             lastBooking = bookingRepository
                     .findFirstByItemIdAndStatusAndStartIsBeforeOrderByEndDesc(itemId, BookingStatus.APPROVED, now)
@@ -87,10 +86,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public List<ItemOwnerDto> getAllByOwner(Long userId) {
-        checkUserId(userId);
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
-
+        getUser(userId);
         return itemRepository.findAllByOwnerIdOrderByIdAsc(userId).stream()
                 .map(item -> {
                     LocalDateTime now = LocalDateTime.now();
@@ -107,7 +103,8 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    public List<ItemDto> search(String text) {
+    public List<ItemDto> search(Long userId, String text) {
+        getUser(userId);
         if (text == null || text.isBlank()) {
             return List.of();
         }
@@ -118,12 +115,10 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public CommentDto addComment(Long userId, Long itemId, CommentDto commentDto) {
-        checkUserId(userId);
+        User author = getUser(userId);
         if (commentDto.getText() == null || commentDto.getText().isBlank()) {
             throw new ValidationException("Текст комментария не может быть пустым");
         }
-        User author = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
 
@@ -131,16 +126,15 @@ public class ItemServiceImpl implements ItemService {
                 userId, itemId, BookingStatus.APPROVED, LocalDateTime.now());
         if (!rented) {
             throw new ValidationException("Оставить отзыв может только пользователь, арендовавший вещь, "
-                    + "и только после окончания аренды");
+                    + "только после окончания аренды");
         }
 
         Comment comment = commentRepository.save(CommentMapper.toComment(commentDto, item, author));
         return CommentMapper.toCommentDto(comment);
     }
 
-    private void checkUserId(Long userId) {
-        if (userId == null) {
-            throw new ValidationException("Не указан идентификатор пользователя в заголовке X-Sharer-User-Id");
-        }
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
     }
 }

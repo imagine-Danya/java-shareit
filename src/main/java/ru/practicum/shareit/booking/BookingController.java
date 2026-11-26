@@ -26,32 +26,32 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
-    public BookingDto create(@RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
+    public BookingDto create(@RequestHeader(USER_ID_HEADER) Long userId,
                              @Valid @RequestBody NewBookingDto newBookingDto) {
         return bookingService.create(userId, newBookingDto);
     }
 
     @PatchMapping("/{bookingId}")
-    public BookingDto approve(@RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
+    public BookingDto approve(@RequestHeader(USER_ID_HEADER) Long userId,
                               @PathVariable Long bookingId,
                               @RequestParam boolean approved) {
         return bookingService.approve(userId, bookingId, approved);
     }
 
     @GetMapping("/{bookingId}")
-    public BookingDto getById(@RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
+    public BookingDto getById(@RequestHeader(USER_ID_HEADER) Long userId,
                               @PathVariable Long bookingId) {
         return bookingService.getById(userId, bookingId);
     }
 
     @GetMapping
-    public List<BookingDto> getUserBookings(@RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
+    public List<BookingDto> getUserBookings(@RequestHeader(USER_ID_HEADER) Long userId,
                                             @RequestParam(defaultValue = "ALL") String state) {
         return bookingService.getUserBookings(userId, state);
     }
 
     @GetMapping("/owner")
-    public List<BookingDto> getOwnerBookings(@RequestHeader(value = USER_ID_HEADER, required = false) Long userId,
+    public List<BookingDto> getOwnerBookings(@RequestHeader(USER_ID_HEADER) Long userId,
                                              @RequestParam(defaultValue = "ALL") String state) {
         return bookingService.getOwnerBookings(userId, state);
     }

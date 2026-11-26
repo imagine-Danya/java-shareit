@@ -28,14 +28,11 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingDto create(Long userId, NewBookingDto dto) {
-        checkUserId(userId);
+        User booker = getUser(userId);
         validateDates(dto.getStart(), dto.getEnd());
 
-        User booker = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
         Item item = itemRepository.findById(dto.getItemId())
                 .orElseThrow(() -> new NotFoundException("Вещь с id " + dto.getItemId() + " не найдена"));
-
         if (!item.isAvailable()) {
             throw new ValidationException("Вещь с id " + item.getId() + " недоступна для бронирования");
         }
@@ -49,10 +46,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingDto approve(Long userId, Long bookingId, boolean approved) {
-        checkUserId(userId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Бронирование с id " + bookingId + " не найдено"));
-
         if (!booking.getItem().getOwner().getId().equals(userId)) {
             throw new ForbiddenException("Подтверждать или отклонять бронирование может только владелец вещи");
         }
@@ -66,7 +61,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingDto getById(Long userId, Long bookingId) {
-        checkUserId(userId);
+        getUser(userId);
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Бронирование с id " + bookingId + " не найдено"));
 
@@ -89,10 +84,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private List<BookingDto> findByState(Long userId, String state, boolean owner) {
-        checkUserId(userId);
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
-
+        getUser(userId);
         BookingState bookingState = parseState(state);
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
         LocalDateTime now = LocalDateTime.now();
@@ -145,9 +137,8 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private void checkUserId(Long userId) {
-        if (userId == null) {
-            throw new ValidationException("Не указан идентификатор пользователя в заголовке X-Sharer-User-Id");
-        }
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
     }
 }
